@@ -99,21 +99,23 @@ export const connectWallet = (keyName: string) => {
 
 
 // 発行
-export const mint = (keyName: string) => {
+export const mint = (keyName: string, app: {[key:string]: any}) => {
     return async (dispath: any, getState: any) =>{
+        // console.log(app);
+        //
         const state = getState();
         if(state.collection[keyName]){
             //
             const minter = minters[keyName];
 
             // 申請情報
-            const workAddr = "0x35fe70703731cEaF4DA675c01c60db2BD24157e9";
-            const workId = 5;
+            const workAddr = app.workAddr;
+            const workId = app.workId;
             const applicantAddr = state.collection[keyName].wallet_address;
             const licenseFees = 100000000000000000000000;
-            const startDate = Date.parse("2023-01-01T00:00:00Z") / 1000;
-            const endDate =   Date.parse("2024-01-01T00:00:00Z") / 1000;
-            const cancellationDate = Date.parse("2023-03-31T00:00:00Z") / 1000;
+            const startDate = Date.parse(app.startDate) / 1000;
+            const endDate =   Date.parse(app.endDate) / 1000;
+            const cancellationDate = Date.parse(app.cancellationDate) / 1000;
             const createdDate = Math.floor(Date.now() / 1000);
 
             //
@@ -124,14 +126,14 @@ export const mint = (keyName: string) => {
                 licenseFees: licenseFees,
                 workAddr: workAddr,
                 workId: workId,
-                leadAuthorName: "江戸レナ",
-                leadAuthorAddr: "0x4Af6158D35Fb5c14D7bf2aF66C7958114b882f4A",
-                workTitle: "KYOSO",
+                leadAuthorName: "江戸レナ", // TODO: コントラクトから取得
+                leadAuthorAddr: "0x4Af6158D35Fb5c14D7bf2aF66C7958114b882f4A", // TODO: コントラクトから取得
+                workTitle: "KYOSO", // TODO: コントラクトから取得
                 applicantAddr: applicantAddr,
-                applicantName: "Takechy",
-                applicantContact: "takechi48j@gmail.com",
-                useLocation: "https://www.youtube.com/watch?v=RheVEBwAdB4",
-                useDetails: "プロモーションビデオのBGMとして",
+                applicantName: app.applicantName,
+                applicantContact: app.applicantContact,
+                useLocation: app.useLocation,
+                useDetails: app.useDetails,
                 startDate: startDate,
                 endDate: endDate,
                 cancellationDate: cancellationDate,
@@ -141,32 +143,31 @@ export const mint = (keyName: string) => {
             const contract = minter.getContractWriter();
             const signer = minter.getSigner();
             const message = JSON.stringify(application_json);
-            console.log(message);
             
             // ダイジェスト化
             const messageDigest = await contract.getMessageHash(message);
             // string型から32長のバイト列に変換する。
             const messageDigest_arr = ethers.toBeArray(messageDigest);
 
-            // 署名: `\x19Ethereum Signed Message:\n`がprefixdされてからHash化される。
-            // 末尾の`n`は署名するメッセージの長さを指定する。
-            const signature = await signer.signMessage(messageDigest_arr);
-            // console.log(signature);
+            // TODO: 確認フォーム
+            const isValided = confirm(`以下の内容で署名して申請します。\n${message}\nメッセージダイジェスト: ${messageDigest}`);
+            if(isValided){
+                // 署名: `\x19Ethereum Signed Message:\n`がprefixdされてからHash化される。
+                // 末尾の`n`は署名するメッセージの長さを指定する。
+                const signature = await signer.signMessage(messageDigest_arr);
+                // console.log(signature);
 
-            // 発行。
-            await contract.mint(
-                workAddr,
-                workId,
-                startDate,
-                endDate,
-                cancellationDate,
-                message,
-                signature
-            );
-
-
-
-
+                // 発行。
+                await contract.mint(
+                    workAddr,
+                    workId,
+                    startDate,
+                    endDate,
+                    cancellationDate,
+                    message,
+                    signature
+                );
+            }
 
 
         }else{
